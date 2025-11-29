@@ -5,6 +5,7 @@ let settings = {};
 let currentChat = [];
 let isGenerating = false;
 let abortController = null;
+let models = []; // 模型列表
 
 // DOM 元素
 const elements = {
@@ -23,6 +24,30 @@ const elements = {
     closeSettings: document.getElementById('close-settings'),
     saveSettings: document.getElementById('save-settings'),
     resetSettings: document.getElementById('reset-settings'),
+    
+    // 模型管理相关
+    modelsBtn: document.getElementById('models-btn'),
+    modelsModal: document.getElementById('models-modal'),
+    closeModels: document.getElementById('close-models'),
+    addModelBtn: document.getElementById('add-model-btn'),
+    refreshModelsBtn: document.getElementById('refresh-models-btn'),
+    modelsList: document.getElementById('models-list'),
+    
+    // 模型编辑相关
+    modelEditModal: document.getElementById('model-edit-modal'),
+    closeModelEdit: document.getElementById('close-model-edit'),
+    modelForm: document.getElementById('model-form'),
+    modelEditTitle: document.getElementById('model-edit-title'),
+    modelProvider: document.getElementById('model-provider'),
+    modelName: document.getElementById('model-name'),
+    modelApiKey: document.getElementById('model-api-key'),
+    modelApiUrl: document.getElementById('model-api-url'),
+    modelMaxTokens: document.getElementById('model-max-tokens'),
+    modelTemperature: document.getElementById('model-temperature'),
+    modelTemperatureValue: document.getElementById('model-temperature-value'),
+    modelEnabled: document.getElementById('model-enabled'),
+    testModelBtn: document.getElementById('test-model-btn'),
+    saveModelBtn: document.getElementById('save-model-btn'),
     
     // 设置表单元素
     apiKey: document.getElementById('api-key'),
@@ -44,7 +69,12 @@ async function initApp() {
     try {
         // 加载设置
         settings = await ipcRenderer.invoke('get-settings');
+        
+        // 加载模型列表
+        models = await ipcRenderer.invoke('get-models');
+        
         updateSettingsUI();
+        updateModelsUI();
         
         // 绑定事件
         bindEvents();
@@ -91,6 +121,18 @@ function bindEvents() {
     elements.closeSettings.addEventListener('click', closeSettings);
     elements.saveSettings.addEventListener('click', saveSettingsHandler);
     elements.resetSettings.addEventListener('click', resetSettingsHandler);
+    
+    // 模型管理
+    elements.modelsBtn.addEventListener('click', openModels);
+    elements.closeModels.addEventListener('click', closeModels);
+    elements.addModelBtn.addEventListener('click', openAddModel);
+    elements.refreshModelsBtn.addEventListener('click', refreshModelsStatus);
+    
+    // 模型编辑
+    elements.closeModelEdit.addEventListener('click', closeModelEdit);
+    elements.saveModelBtn.addEventListener('click', saveModelHandler);
+    elements.testModelBtn.addEventListener('click', testModelHandler);
+    elements.modelTemperature.addEventListener('input', updateModelTemperatureDisplay);
     
     // 温度滑块
     elements.temperature.addEventListener('input', updateTemperatureDisplay);
@@ -181,9 +223,26 @@ async function sendMessage() {
     const message = elements.messageInput.value.trim();
     if (!message || isGenerating) return;
     
-    if (!settings.apiKey) {
-        showError('配置错误', '请先配置 API Key');
-        openSettings();
+    // 获取选中的模型
+    const selectedModelId = elements.modelSelect.value;
+    if (!selectedModelId) {
+        showError('错误', '请先选择一个模型');
+        return;
+    }
+    
+    const selectedModel = models.find(m => m.id === selectedModelId);
+    if (!selectedModel) {
+        showError('错误', '选中的模型不存在');
+        return;
+    }
+    
+    if (!selectedModel.enabled) {
+        showError('错误', '选中的模型已禁用');
+        return;
+    }
+    
+    if (!selectedModel.apiKey) {
+        showError('配置错误', '选中的模型缺少 API Key');
         return;
     }
     
@@ -196,7 +255,7 @@ async function sendMessage() {
     showLoading(true);
     
     try {
-        await generateResponse(message);
+        await generateResponse(message, selectedModel);
     } catch (error) {
         console.error('生成回复失败:', error);
         showError('生成失败', error.message);
@@ -207,7 +266,7 @@ async function sendMessage() {
 }
 
 // 生成回复
-async function generateResponse(message) {
+async function generateResponse(message, model) {
     isGenerating = true;
     elements.sendBtn.disabled = true;
     elements.stopBtn.disabled = false;
@@ -232,10 +291,10 @@ async function generateResponse(message) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${settings.apiKey}`
+                'Authorization': `Bearer ${model.apiKey}`
             },
             body: JSON.stringify({
-                model: elements.modelSelect ? elements.modelSelect.value.trim() : settings.model || 'gpt-3.5-turbo',
+                model: model.name,
                 messages: messages,
                 max_tokens: parseInt(settings.maxTokens),
                 temperature: parseFloat(settings.temperature),
@@ -514,6 +573,289 @@ async function updateAppInfo() {
         document.getElementById('node-version').textContent = appInfo.nodeVersion;
     } catch (error) {
         console.error('获取应用信息失败:', error);
+    }
+}
+
+// 模型管理函数
+function openModels() {
+    elements.modelsModal.style.display = 'block';
+    renderModelsList();
+}
+
+function closeModels() {
+    elements.modelsModal.style.display = 'none';
+}
+
+function openAddModel() {
+    elements.modelEditTitle.textContent = '添加模型';
+    elements.modelForm.reset();
+    elements.modelTemperatureValue.textContent = '0.7';
+    elements.modelEnabled.checked = true;
+    elements.modelEditModal.style.display = 'block';
+}
+
+function closeModelEdit() {
+    elements.modelEditModal.style.display = 'none';
+}
+
+function updateModelTemperatureDisplay() {
+    elements.modelTemperatureValue.textContent = elements.modelTemperature.value;
+}
+
+async function saveModelHandler() {
+    const model = {
+        id: Date.now().toString(),
+        provider: elements.modelProvider.value,
+        name: elements.modelName.value.trim(),
+        apiKey: elements.modelApiKey.value.trim(),
+        apiUrl: elements.modelApiUrl.value.trim(),
+        maxTokens: parseInt(elements.modelMaxTokens.value) || 2048,
+        temperature: parseFloat(elements.modelTemperature.value) || 0.7,
+        enabled: elements.modelEnabled.checked,
+        status: 'unknown',
+        lastTest: null
+    };
+    
+    if (!model.provider || !model.name) {
+        showError('验证错误', '请填写厂商和模型名称');
+        return;
+    }
+    
+    try {
+        // 检查是否已存在同名模型
+        const existingIndex = models.findIndex(m => m.name === model.name && m.provider === model.provider);
+        if (existingIndex !== -1) {
+            models[existingIndex] = { ...models[existingIndex], ...model };
+        } else {
+            models.push(model);
+        }
+        
+        await ipcRenderer.invoke('save-models', models);
+        updateModelsUI();
+        closeModelEdit();
+        showMessage('成功', '模型保存成功');
+    } catch (error) {
+        console.error('保存模型失败:', error);
+        showError('保存失败', error.message);
+    }
+}
+
+async function testModelHandler() {
+    const model = {
+        provider: elements.modelProvider.value,
+        name: elements.modelName.value.trim(),
+        apiKey: elements.modelApiKey.value.trim(),
+        apiUrl: elements.modelApiUrl.value.trim()
+    };
+    
+    if (!model.provider || !model.name) {
+        showError('验证错误', '请填写厂商和模型名称');
+        return;
+    }
+    
+    elements.testModelBtn.disabled = true;
+    elements.testModelBtn.textContent = '测试中...';
+    
+    try {
+        const result = await ipcRenderer.invoke('test-model', model);
+        if (result.success) {
+            showMessage('测试成功', result.message);
+        } else {
+            showError('测试失败', result.message);
+        }
+    } catch (error) {
+        console.error('模型测试失败:', error);
+        showError('测试失败', error.message);
+    } finally {
+        elements.testModelBtn.disabled = false;
+        elements.testModelBtn.textContent = '测试连接';
+    }
+}
+
+async function refreshModelsStatus() {
+    elements.refreshModelsBtn.disabled = true;
+    elements.refreshModelsBtn.innerHTML = '<span class="icon">🔄</span> 测试中...';
+    
+    try {
+        for (let i = 0; i < models.length; i++) {
+            const model = models[i];
+            if (!model.enabled) continue;
+            
+            model.status = 'testing';
+            renderModelsList();
+            
+            try {
+                const result = await ipcRenderer.invoke('test-model', model);
+                model.status = result.success ? 'online' : 'offline';
+                model.lastTest = new Date().toISOString();
+            } catch (error) {
+                model.status = 'offline';
+                model.lastTest = new Date().toISOString();
+            }
+        }
+        
+        await ipcRenderer.invoke('save-models', models);
+        renderModelsList();
+        showMessage('刷新完成', '模型状态已更新');
+    } catch (error) {
+        console.error('刷新模型状态失败:', error);
+        showError('刷新失败', error.message);
+    } finally {
+        elements.refreshModelsBtn.disabled = false;
+        elements.refreshModelsBtn.innerHTML = '<span class="icon">🔄</span> 刷新状态';
+    }
+}
+
+function renderModelsList() {
+    if (!elements.modelsList) return;
+    
+    if (models.length === 0) {
+        elements.modelsList.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">暂无模型，请点击上方按钮添加模型</div>';
+        return;
+    }
+    
+    elements.modelsList.innerHTML = models.map(model => {
+        const statusClass = model.status === 'online' ? 'online' : 
+                           model.status === 'offline' ? 'offline' : 
+                           model.status === 'testing' ? 'testing' : 'unknown';
+        const statusText = model.status === 'online' ? '在线' : 
+                          model.status === 'offline' ? '离线' : 
+                          model.status === 'testing' ? '测试中' : '未测试';
+        
+        return `
+            <div class="model-item">
+                <div class="model-info">
+                    <div class="model-name">${model.name}</div>
+                    <div class="model-details">
+                        <span class="model-provider">${getProviderName(model.provider)}</span>
+                        <span>最大令牌: ${model.maxTokens}</span>
+                        <span>温度: ${model.temperature}</span>
+                        <div class="model-status">
+                            <div class="status-indicator ${statusClass}"></div>
+                            <span>${statusText}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="model-actions">
+                    <button class="btn btn-secondary" onclick="editModel('${model.id}')">编辑</button>
+                    <button class="btn btn-secondary" onclick="testSingleModel('${model.id}')">测试</button>
+                    <button class="btn btn-secondary" onclick="deleteModel('${model.id}')">删除</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function getProviderName(provider) {
+    const providerNames = {
+        'openai': 'OpenAI',
+        'anthropic': 'Anthropic',
+        'google': 'Google',
+        'azure': 'Azure OpenAI',
+        'huggingface': 'Hugging Face',
+        'custom': '自定义'
+    };
+    return providerNames[provider] || provider;
+}
+
+window.editModel = function(id) {
+    const model = models.find(m => m.id === id);
+    if (!model) return;
+    
+    elements.modelEditTitle.textContent = '编辑模型';
+    elements.modelProvider.value = model.provider;
+    elements.modelName.value = model.name;
+    elements.modelApiKey.value = model.apiKey;
+    elements.modelApiUrl.value = model.apiUrl;
+    elements.modelMaxTokens.value = model.maxTokens;
+    elements.modelTemperature.value = model.temperature;
+    elements.modelTemperatureValue.textContent = model.temperature;
+    elements.modelEnabled.checked = model.enabled;
+    
+    elements.modelEditModal.style.display = 'block';
+};
+
+window.testSingleModel = async function(id) {
+    const model = models.find(m => m.id === id);
+    if (!model) return;
+    
+    model.status = 'testing';
+    renderModelsList();
+    
+    try {
+        const result = await ipcRenderer.invoke('test-model', model);
+        model.status = result.success ? 'online' : 'offline';
+        model.lastTest = new Date().toISOString();
+        
+        await ipcRenderer.invoke('save-models', models);
+        renderModelsList();
+        
+        if (result.success) {
+            showMessage('测试成功', `${model.name} 连接正常`);
+        } else {
+            showError('测试失败', result.message);
+        }
+    } catch (error) {
+        model.status = 'offline';
+        model.lastTest = new Date().toISOString();
+        await ipcRenderer.invoke('save-models', models);
+        renderModelsList();
+        showError('测试失败', error.message);
+    }
+};
+
+window.deleteModel = async function(id) {
+    if (!confirm('确定要删除这个模型吗？')) return;
+    
+    try {
+        models = models.filter(m => m.id !== id);
+        await ipcRenderer.invoke('save-models', models);
+        updateModelsUI();
+        renderModelsList();
+        showMessage('删除成功', '模型已删除');
+    } catch (error) {
+        console.error('删除模型失败:', error);
+        showError('删除失败', error.message);
+    }
+};
+
+function updateModelsUI() {
+    // 更新模型选择器
+    if (elements.modelSelect) {
+        elements.modelSelect.innerHTML = '<option value="">选择模型</option>';
+        models.filter(m => m.enabled).forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = `${model.name} (${getProviderName(model.provider)})`;
+            elements.modelSelect.appendChild(option);
+        });
+        
+        // 如果当前设置中的模型存在，选中它
+        if (settings.model) {
+            const currentModel = models.find(m => m.name === settings.model);
+            if (currentModel) {
+                elements.modelSelect.value = currentModel.id;
+            }
+        }
+    }
+    
+    // 更新默认模型选择器
+    if (elements.defaultModel) {
+        elements.defaultModel.innerHTML = '<option value="">选择默认模型</option>';
+        models.filter(m => m.enabled).forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = `${model.name} (${getProviderName(model.provider)})`;
+            elements.defaultModel.appendChild(option);
+        });
+        
+        // 如果当前设置中的模型存在，选中它
+        if (settings.model) {
+            const currentModel = models.find(m => m.name === settings.model);
+            if (currentModel) {
+                elements.defaultModel.value = currentModel.id;
+            }
+        }
     }
 }
 
