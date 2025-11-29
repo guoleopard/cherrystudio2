@@ -7,6 +7,18 @@
     "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "build": {
+    "appId": "com.example.cherrystudio2",
+    "productName": "CherryStudio2",
+    "directories": {
+      "output": "dist"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "your-github-username",
+      "repo": "your-github-repo"
+    }
+  },
   "keywords": [
     "electron",
     "large-model",
@@ -18,6 +30,7 @@
     "electron": "^28.2.0"
   },
   "dependencies": {
+    "electron-updater": "^6.6.2",
     "openai": "^6.9.1"
   }
 }
