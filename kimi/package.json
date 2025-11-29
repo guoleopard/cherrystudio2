@@ -1,0 +1,54 @@
+{
+  "name": "ai-chat-client",
+  "version": "1.0.0",
+  "description": "A desktop AI chat client built with Electron, similar to Cherry Studio",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --publish=never"
+  },
+  "keywords": [
+    "electron",
+    "ai",
+    "chat",
+    "llm",
+    "desktop"
+  ],
+  "author": "AI Chat Client",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "build": {
+    "appId": "com.ai.chat.client",
+    "productName": "AI Chat Client",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "renderer/",
+      "assets/",
+      "node_modules/"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    }
+  }
+}

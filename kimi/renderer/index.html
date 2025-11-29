@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Client</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏 -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>AI Chat</h2>
+                <button id="new-chat-btn" class="btn btn-primary">
+                    <span class="icon">+</span>
+                    新对话
+                </button>
+            </div>
+            
+            <div class="chat-list">
+                <div class="chat-item active">
+                    <div class="chat-title">默认对话</div>
+                    <div class="chat-time">刚刚</div>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <button id="settings-btn" class="btn btn-secondary">
+                    <span class="icon">⚙</span>
+                    设置
+                </button>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- 顶部工具栏 -->
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <h3 id="current-chat-title">默认对话</h3>
+                </div>
+                <div class="toolbar-right">
+                    <input type="text" id="model-select" class="model-input" placeholder="输入模型名称，如: gpt-3.5-turbo" value="gpt-3.5-turbo" list="model-suggestions">
+                    <datalist id="model-suggestions">
+                        <option value="gpt-3.5-turbo">
+                        <option value="gpt-4">
+                        <option value="gpt-4-turbo">
+                        <option value="gpt-4-turbo-preview">
+                        <option value="gpt-3.5-turbo-16k">
+                        <option value="gpt-4-32k">
+                        <option value="text-davinci-003">
+                        <option value="text-curie-001">
+                        <option value="text-babbage-001">
+                        <option value="text-ada-001">
+                    </datalist>
+                    <button id="clear-chat-btn" class="btn btn-secondary">
+                        <span class="icon">🗑</span>
+                        清空
+                    </button>
+                </div>
+            </div>
+
+            <!-- 聊天消息区 -->
+            <div class="chat-container">
+                <div id="messages-container" class="messages-container">
+                    <div class="welcome-message">
+                        <h3>欢迎使用 AI Chat Client</h3>
+                        <p>请在下方输入您的问题，我将为您提供帮助。</p>
+                        <div class="quick-actions">
+                            <button class="quick-action-btn" data-prompt="请介绍一下你自己">请介绍一下你自己</button>
+                            <button class="quick-action-btn" data-prompt="今天天气怎么样？">今天天气怎么样？</button>
+                            <button class="quick-action-btn" data-prompt="帮我写一段代码">帮我写一段代码</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="message-input" 
+                        class="message-input" 
+                        placeholder="输入您的问题..."
+                        rows="1"
+                    ></textarea>
+                    <button id="send-btn" class="send-btn">
+                        <span class="icon">➤</span>
+                    </button>
+                </div>
+                <div class="input-footer">
+                    <div class="input-info">
+                        <span id="input-counter">0/4000</span>
+                    </div>
+                    <div class="input-actions">
+                        <button id="stop-btn" class="btn btn-secondary" disabled>
+                            停止生成
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置模态框 -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>设置</h3>
+                <button id="close-settings" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h4>API 设置</h4>
+                    <div class="form-group">
+                        <label for="api-key">API Key:</label>
+                        <input type="password" id="api-key" class="form-control" placeholder="请输入您的 API Key">
+                    </div>
+                    <div class="form-group">
+                        <label for="api-url">API URL:</label>
+                        <input type="text" id="api-url" class="form-control" placeholder="https://api.openai.com/v1/chat/completions">
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h4>模型参数</h4>
+                    <div class="form-group">
+                        <label for="default-model">默认模型:</label>
+                        <input type="text" id="default-model" class="form-control" placeholder="输入模型名称，如: gpt-3.5-turbo" value="gpt-3.5-turbo" list="default-model-suggestions">
+                    <datalist id="default-model-suggestions">
+                        <option value="gpt-3.5-turbo">
+                        <option value="gpt-4">
+                        <option value="gpt-4-turbo">
+                        <option value="gpt-4-turbo-preview">
+                        <option value="gpt-3.5-turbo-16k">
+                        <option value="gpt-4-32k">
+                        <option value="text-davinci-003">
+                        <option value="text-curie-001">
+                        <option value="text-babbage-001">
+                        <option value="text-ada-001">
+                    </datalist>
+                    </div>
+                    <div class="form-group">
+                        <label for="max-tokens">最大令牌数:</label>
+                        <input type="number" id="max-tokens" class="form-control" min="1" max="4096" value="2048">
+                    </div>
+                    <div class="form-group">
+                        <label for="temperature">温度 (0-2):</label>
+                        <input type="range" id="temperature" class="form-control-range" min="0" max="2" step="0.1" value="0.7">
+                        <span id="temperature-value">0.7</span>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h4>关于</h4>
+                    <div class="app-info">
+                        <p><strong>应用名称:</strong> <span id="app-name">AI Chat Client</span></p>
+                        <p><strong>版本:</strong> <span id="app-version">1.0.0</span></p>
+                        <p><strong>Electron:</strong> <span id="electron-version"></span></p>
+                        <p><strong>Node.js:</strong> <span id="node-version"></span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="reset-settings" class="btn btn-secondary">重置设置</button>
+                <button id="save-settings" class="btn btn-primary">保存设置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载遮罩 -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p>正在发送消息...</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "name": "doubao",
+  "version": "1.0.0",
+  "description": "A local running large model conversation client",
+  "main": "index.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "build": {
+    "appId": "com.example.cherrystudio2",
+    "productName": "CherryStudio2",
+    "directories": {
+      "output": "dist"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "your-github-username",
+      "repo": "your-github-repo"
+    }
+  },
+  "keywords": [
+    "electron",
+    "large-model",
+    "conversation-client"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^28.2.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2",
+    "openai": "^6.9.1"
+  }
+}
