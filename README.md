@@ -1,0 +1,2 @@
+# cherrystudio2
+仿CherryStudio的大模型调用客户端
