@@ -26,6 +26,10 @@
             </div>
             
             <div class="sidebar-footer">
+                <button id="models-btn" class="btn btn-secondary">
+                    <span class="icon">🤖</span>
+                    模型管理
+                </button>
                 <button id="settings-btn" class="btn btn-secondary">
                     <span class="icon">⚙</span>
                     设置
@@ -41,19 +45,9 @@
                     <h3 id="current-chat-title">默认对话</h3>
                 </div>
                 <div class="toolbar-right">
-                    <input type="text" id="model-select" class="model-input" placeholder="输入模型名称，如: gpt-3.5-turbo" value="gpt-3.5-turbo" list="model-suggestions">
-                    <datalist id="model-suggestions">
-                        <option value="gpt-3.5-turbo">
-                        <option value="gpt-4">
-                        <option value="gpt-4-turbo">
-                        <option value="gpt-4-turbo-preview">
-                        <option value="gpt-3.5-turbo-16k">
-                        <option value="gpt-4-32k">
-                        <option value="text-davinci-003">
-                        <option value="text-curie-001">
-                        <option value="text-babbage-001">
-                        <option value="text-ada-001">
-                    </datalist>
+                    <select id="model-select" class="model-select">
+                        <option value="">选择模型</option>
+                    </select>
                     <button id="clear-chat-btn" class="btn btn-secondary">
                         <span class="icon">🗑</span>
                         清空
@@ -103,6 +97,89 @@
         </div>
     </div>
 
+    <!-- 模型管理模态框 -->
+    <div id="models-modal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3>模型管理</h3>
+                <button id="close-models" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="models-toolbar">
+                    <button id="add-model-btn" class="btn btn-primary">
+                        <span class="icon">+</span>
+                        添加模型
+                    </button>
+                    <button id="refresh-models-btn" class="btn btn-secondary">
+                        <span class="icon">🔄</span>
+                        刷新状态
+                    </button>
+                </div>
+                
+                <div class="models-list" id="models-list">
+                    <!-- 模型列表将在这里动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加/编辑模型模态框 -->
+    <div id="model-edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="model-edit-title">添加模型</h3>
+                <button id="close-model-edit" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="model-form">
+                    <div class="form-group">
+                        <label for="model-provider">厂商:</label>
+                        <select id="model-provider" class="form-control" required>
+                            <option value="">选择厂商</option>
+                            <option value="openai">OpenAI</option>
+                            <option value="anthropic">Anthropic</option>
+                            <option value="google">Google</option>
+                            <option value="azure">Azure OpenAI</option>
+                            <option value="huggingface">Hugging Face</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="model-name">模型名称:</label>
+                        <input type="text" id="model-name" class="form-control" placeholder="如: gpt-3.5-turbo" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="model-api-key">API Key:</label>
+                        <input type="password" id="model-api-key" class="form-control" placeholder="输入该模型的 API Key">
+                    </div>
+                    <div class="form-group">
+                        <label for="model-api-url">API URL:</label>
+                        <input type="text" id="model-api-url" class="form-control" placeholder="如: https://api.openai.com/v1/chat/completions">
+                    </div>
+                    <div class="form-group">
+                        <label for="model-max-tokens">最大令牌数:</label>
+                        <input type="number" id="model-max-tokens" class="form-control" min="1" max="128000" value="2048">
+                    </div>
+                    <div class="form-group">
+                        <label for="model-temperature">温度 (0-2):</label>
+                        <input type="range" id="model-temperature" class="form-control-range" min="0" max="2" step="0.1" value="0.7">
+                        <span id="model-temperature-value">0.7</span>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="model-enabled" checked>
+                            启用此模型
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button id="test-model-btn" class="btn btn-secondary">测试连接</button>
+                <button id="save-model-btn" class="btn btn-primary">保存</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 设置模态框 -->
     <div id="settings-modal" class="modal">
         <div class="modal-content">
@@ -127,19 +204,9 @@
                     <h4>模型参数</h4>
                     <div class="form-group">
                         <label for="default-model">默认模型:</label>
-                        <input type="text" id="default-model" class="form-control" placeholder="输入模型名称，如: gpt-3.5-turbo" value="gpt-3.5-turbo" list="default-model-suggestions">
-                    <datalist id="default-model-suggestions">
-                        <option value="gpt-3.5-turbo">
-                        <option value="gpt-4">
-                        <option value="gpt-4-turbo">
-                        <option value="gpt-4-turbo-preview">
-                        <option value="gpt-3.5-turbo-16k">
-                        <option value="gpt-4-32k">
-                        <option value="text-davinci-003">
-                        <option value="text-curie-001">
-                        <option value="text-babbage-001">
-                        <option value="text-ada-001">
-                    </datalist>
+                        <select id="default-model" class="form-control">
+                            <option value="">选择默认模型</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="max-tokens">最大令牌数:</label>

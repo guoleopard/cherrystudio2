@@ -211,24 +211,29 @@ app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
 });
 
+// 处理来自渲染进程的用户数据路径请求
+ipcMain.on('get-user-data-path', (event) => {
+  event.reply('user-data-path-reply', app.getPath('userData'));
+});
+
 // 处理来自渲染进程的消息
-ipcMain.on('send-message', async (event, { message, settings }) => {
+ipcMain.on('send-message', async (event, { message, model }) => {
   try {
     // 创建OpenAI客户端
     const openai = new OpenAI({
-      apiKey: settings.apiKey,
-      baseURL: settings.apiUrl
+      apiKey: model.apiKey,
+      baseURL: model.apiUrl
     });
 
     // 调用OpenAI API
     const completion = await openai.chat.completions.create({
-      model: settings.model,
+      model: model.name,
       messages: [{ role: 'user', content: message }],
-      temperature: settings.temperature,
-      top_p: settings.topP,
-      frequency_penalty: settings.frequencyPenalty,
-      presence_penalty: settings.presencePenalty,
-      max_tokens: settings.maxTokens
+      temperature: model.temperature,
+      top_p: model.topP,
+      frequency_penalty: model.frequencyPenalty,
+      presence_penalty: model.presencePenalty,
+      max_tokens: model.maxTokens
     });
 
     // 将回复发送回渲染进程
@@ -236,5 +241,33 @@ ipcMain.on('send-message', async (event, { message, settings }) => {
   } catch (error) {
     // 处理错误
     mainWindow.webContents.send('message-reply', `Error: ${error.message}`);
+  }
+});
+
+// 处理来自渲染进程的模型测试请求
+ipcMain.on('test-model', async (event, model) => {
+  try {
+    // 创建OpenAI客户端
+    const openai = new OpenAI({
+      apiKey: model.apiKey,
+      baseURL: model.apiUrl
+    });
+
+    // 调用OpenAI API进行测试
+    const completion = await openai.chat.completions.create({
+      model: model.name,
+      messages: [{ role: 'user', content: 'Hello' }],
+      temperature: model.temperature,
+      top_p: model.topP,
+      frequency_penalty: model.frequencyPenalty,
+      presence_penalty: model.presencePenalty,
+      max_tokens: model.maxTokens
+    });
+
+    // 将测试结果发送回渲染进程
+    mainWindow.webContents.send('test-model-result', { success: true });
+  } catch (error) {
+    // 处理错误
+    mainWindow.webContents.send('test-model-result', { success: false, error: error.message });
   }
 });

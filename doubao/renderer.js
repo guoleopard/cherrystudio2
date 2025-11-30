@@ -1,4 +1,4 @@
-const { ipcRenderer, app } = require('electron');
+const { ipcRenderer } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
@@ -6,14 +6,6 @@ const path = require('path');
 const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-button');
 const messagesContainer = document.getElementById('messages');
-const modelInput = document.getElementById('model-input');
-const apiKeyInput = document.getElementById('api-key');
-const apiUrlInput = document.getElementById('api-url');
-const temperatureInput = document.getElementById('temperature');
-const topPInput = document.getElementById('top-p');
-const frequencyPenaltyInput = document.getElementById('frequency-penalty');
-const presencePenaltyInput = document.getElementById('presence-penalty');
-const maxTokensInput = document.getElementById('max-tokens');
 const settingsButton = document.getElementById('settings-button');
 const settingsModal = document.getElementById('settings-modal');
 const sessionList = document.getElementById('session-list');
@@ -21,26 +13,73 @@ const newSessionButton = document.getElementById('new-session-button');
 const exportSessionsButton = document.getElementById('export-sessions-button');
 const importSessionsButton = document.getElementById('import-sessions-button');
 const importFileInput = document.getElementById('import-file-input');
+// 模型管理DOM元素
+const modelList = document.getElementById('model-list');
+const addModelButton = document.getElementById('add-model-button');
+const modelSettingContainer = document.getElementById('model-setting-container');
+const modelSettingTitle = document.getElementById('model-setting-title');
+const modelIdInput = document.getElementById('model-id-input');
+const modelNameInput = document.getElementById('model-name-input');
+const modelProviderInput = document.getElementById('model-provider-input');
+const modelApiKeyInput = document.getElementById('model-api-key');
+const modelApiUrlInput = document.getElementById('model-api-url');
+const modelTemperatureInput = document.getElementById('model-temperature');
+const modelTopPInput = document.getElementById('model-top-p');
+const modelFrequencyPenaltyInput = document.getElementById('model-frequency-penalty');
+const modelPresencePenaltyInput = document.getElementById('model-presence-penalty');
+const modelMaxTokensInput = document.getElementById('model-max-tokens');
+const saveModelButton = document.getElementById('save-model-button');
+const testModelButton = document.getElementById('test-model-button');
+const deleteModelButton = document.getElementById('delete-model-button');
+const modelSelector = document.getElementById('model-selector');
 
 // 设置文件路径
-const settingsPath = path.join(app.getPath('userData'), 'settings.json');
-const sessionsPath = path.join(app.getPath('userData'), 'sessions.json');
+let settingsPath, sessionsPath;
+
+// 请求用户数据路径
+ipcRenderer.send('get-user-data-path');
+
+// 接收用户数据路径
+ipcRenderer.on('user-data-path-reply', (event, userDataPath) => {
+  settingsPath = path.join(userDataPath, 'settings.json');
+  sessionsPath = path.join(userDataPath, 'sessions.json');
+  // 加载设置和会话
+  loadSettings();
+  loadSessionsData();
+});
 
 // 当前会话
 let currentSessionId = null;
+// 当前选中的模型
+let currentModelId = null;
+// 所有模型配置
+let allModels = [];
 
 // 加载设置
 function loadSettings() {
   try {
     const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-    modelInput.value = settings.model || 'gpt-3.5-turbo';
-    apiKeyInput.value = settings.apiKey || '';
-    apiUrlInput.value = settings.apiUrl || 'https://api.openai.com/v1';
-    temperatureInput.value = settings.temperature || 0.7;
-    topPInput.value = settings.topP || 1.0;
-    frequencyPenaltyInput.value = settings.frequencyPenalty || 0.0;
-    presencePenaltyInput.value = settings.presencePenalty || 0.0;
-    maxTokensInput.value = settings.maxTokens || 1024;
+    // 支持旧的设置格式
+    if (settings.model) {
+      // 转换为新的多模型格式
+      allModels = [{
+        id: 'default',
+        name: settings.model,
+        provider: 'OpenAI',
+        apiKey: settings.apiKey,
+        apiUrl: settings.apiUrl,
+        temperature: settings.temperature,
+        topP: settings.topP,
+        frequencyPenalty: settings.frequencyPenalty,
+        presencePenalty: settings.presencePenalty,
+        maxTokens: settings.maxTokens
+      }];
+      currentModelId = 'default';
+    } else {
+      // 新的多模型格式
+      allModels = settings.models || [];
+      currentModelId = settings.currentModelId || (allModels.length > 0 ? allModels[0].id : null);
+    }
     
     // 应用主题设置
     const themeToggle = document.getElementById('theme-toggle');
@@ -51,8 +90,26 @@ function loadSettings() {
       document.body.classList.remove('dark-theme');
       if (themeToggle) themeToggle.textContent = '🌙';
     }
+    
+    // 更新模型列表UI
+    updateModelListUI();
+    // 加载当前模型的设置
+    loadCurrentModelSettings();
   } catch (err) {
     // 如果设置文件不存在，使用默认值
+    allModels = [{
+      id: 'default',
+      name: 'gpt-3.5-turbo',
+      provider: 'OpenAI',
+      apiKey: '',
+      apiUrl: 'https://api.openai.com/v1',
+      temperature: 0.7,
+      topP: 1.0,
+      frequencyPenalty: 0.0,
+      presencePenalty: 0.0,
+      maxTokens: 1024
+    }];
+    currentModelId = 'default';
     saveSettings();
   }
 }
@@ -60,17 +117,191 @@ function loadSettings() {
 // 保存设置
 function saveSettings() {
   const settings = {
-    model: modelInput.value,
-    apiKey: apiKeyInput.value,
-    apiUrl: apiUrlInput.value,
-    temperature: parseFloat(temperatureInput.value),
-    topP: parseFloat(topPInput.value),
-    frequencyPenalty: parseFloat(frequencyPenaltyInput.value),
-    presencePenalty: parseFloat(presencePenaltyInput.value),
-    maxTokens: parseInt(maxTokensInput.value),
+    models: allModels,
+    currentModelId: currentModelId,
     theme: document.body.classList.contains('dark-theme') ? 'dark' : 'light'
   };
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+}
+
+// 更新模型列表UI
+function updateModelListUI() {
+  modelList.innerHTML = '';
+  allModels.forEach(model => {
+    const modelItem = document.createElement('div');
+    modelItem.className = `model-item ${model.id === currentModelId ? 'active' : ''}`;
+    modelItem.dataset.id = model.id;
+    
+    const modelInfo = document.createElement('div');
+    modelInfo.innerHTML = `<strong>${model.name}</strong><br><small>${model.provider}</small>`;
+    
+    modelItem.appendChild(modelInfo);
+    modelItem.addEventListener('click', () => selectModel(model.id));
+    modelList.appendChild(modelItem);
+  });
+}
+
+// 更新模型选择器UI
+function updateModelSelectorUI() {
+  modelSelector.innerHTML = '';
+  allModels.forEach(model => {
+    const option = document.createElement('option');
+    option.value = model.id;
+    option.textContent = `${model.provider} - ${model.name}`;
+    if (model.id === currentModelId) {
+      option.selected = true;
+    }
+    modelSelector.appendChild(option);
+  });
+}
+
+// 加载当前模型的设置
+function loadCurrentModelSettings() {
+  const model = allModels.find(m => m.id === currentModelId);
+  if (model) {
+    modelIdInput.value = model.id;
+    modelNameInput.value = model.name;
+    modelProviderInput.value = model.provider;
+    modelApiKeyInput.value = model.apiKey;
+    modelApiUrlInput.value = model.apiUrl;
+    modelTemperatureInput.value = model.temperature;
+    modelTopPInput.value = model.topP;
+    modelFrequencyPenaltyInput.value = model.frequencyPenalty;
+    modelPresencePenaltyInput.value = model.presencePenalty;
+    modelMaxTokensInput.value = model.maxTokens;
+    
+    modelSettingTitle.textContent = `${model.provider} - ${model.name}`;
+    // 显示保存、测试、删除按钮
+    saveModelButton.style.display = 'block';
+    testModelButton.style.display = 'block';
+    deleteModelButton.style.display = 'block';
+  } else {
+    // 没有选中的模型，清空表单
+    clearModelForm();
+    modelSettingTitle.textContent = '模型设置';
+    // 只显示保存按钮
+    saveModelButton.style.display = 'block';
+    testModelButton.style.display = 'none';
+    deleteModelButton.style.display = 'none';
+  }
+}
+
+// 清空模型表单
+function clearModelForm() {
+  modelIdInput.value = '';
+  modelNameInput.value = '';
+  modelProviderInput.value = '';
+  modelApiKeyInput.value = '';
+  modelApiUrlInput.value = 'https://api.openai.com/v1';
+  modelTemperatureInput.value = 0.7;
+  modelTopPInput.value = 1.0;
+  modelFrequencyPenaltyInput.value = 0.0;
+  modelPresencePenaltyInput.value = 0.0;
+  modelMaxTokensInput.value = 1024;
+}
+
+// 添加新模型
+function addNewModel() {
+  clearModelForm();
+  modelSettingTitle.textContent = '添加新模型';
+  // 只显示保存按钮
+  saveModelButton.style.display = 'block';
+  testModelButton.style.display = 'none';
+  deleteModelButton.style.display = 'none';
+}
+
+// 保存模型
+function saveModel() {
+  const modelId = modelIdInput.value;
+  const modelData = {
+    name: modelNameInput.value,
+    provider: modelProviderInput.value,
+    apiKey: modelApiKeyInput.value,
+    apiUrl: modelApiUrlInput.value,
+    temperature: parseFloat(modelTemperatureInput.value),
+    topP: parseFloat(modelTopPInput.value),
+    frequencyPenalty: parseFloat(modelFrequencyPenaltyInput.value),
+    presencePenalty: parseFloat(modelPresencePenaltyInput.value),
+    maxTokens: parseInt(modelMaxTokensInput.value)
+  };
+  
+  if (modelId) {
+    // 更新现有模型
+    const index = allModels.findIndex(m => m.id === modelId);
+    if (index !== -1) {
+      allModels[index] = { ...allModels[index], ...modelData };
+    }
+  } else {
+    // 创建新模型
+    const newModel = {
+      id: Date.now().toString(),
+      ...modelData
+    };
+    allModels.push(newModel);
+    currentModelId = newModel.id;
+  }
+  
+  saveSettings();
+  updateModelListUI();
+  loadCurrentModelSettings();
+  alert('模型保存成功！');
+}
+
+// 删除模型
+function deleteModel() {
+  const modelId = modelIdInput.value;
+  if (!modelId) return;
+  
+  if (confirm('确定要删除这个模型吗？')) {
+    allModels = allModels.filter(m => m.id !== modelId);
+    if (currentModelId === modelId) {
+      currentModelId = allModels.length > 0 ? allModels[0].id : null;
+    }
+    saveSettings();
+    updateModelListUI();
+    loadCurrentModelSettings();
+    alert('模型删除成功！');
+  }
+}
+
+// 测试模型
+function testModel() {
+  const model = {
+    name: modelNameInput.value,
+    provider: modelProviderInput.value,
+    apiKey: modelApiKeyInput.value,
+    apiUrl: modelApiUrlInput.value,
+    temperature: parseFloat(modelTemperatureInput.value),
+    topP: parseFloat(modelTopPInput.value),
+    frequencyPenalty: parseFloat(modelFrequencyPenaltyInput.value),
+    presencePenalty: parseFloat(modelPresencePenaltyInput.value),
+    maxTokens: parseInt(modelMaxTokensInput.value)
+  };
+  
+  if (!model.name || !model.apiKey || !model.apiUrl) {
+    alert('请填写模型名称、API Key和API地址！');
+    return;
+  }
+  
+  testModelButton.textContent = '测试中...';
+  testModelButton.disabled = true;
+  
+  // 向主进程发送测试请求
+  ipcRenderer.send('test-model', model);
+}
+
+// 选择模型
+function selectModel(modelId) {
+  currentModelId = modelId;
+  saveSettings();
+  updateModelListUI();
+  updateModelSelectorUI();
+  loadCurrentModelSettings();
+}
+
+// 获取当前选中的模型
+function getCurrentModel() {
+  return allModels.find(m => m.id === currentModelId);
 }
 
 // 加载会话
@@ -359,23 +590,15 @@ function sendMessage() {
   addMessage('user', message);
   messageInput.value = '';
 
-  // 获取当前设置
-  const settings = {
-    model: modelInput.value,
-    apiKey: apiKeyInput.value,
-    apiUrl: apiUrlInput.value,
-    temperature: parseFloat(temperatureInput.value),
-    topP: parseFloat(topPInput.value),
-    frequencyPenalty: parseFloat(frequencyPenaltyInput.value),
-    presencePenalty: parseFloat(presencePenaltyInput.value),
-    maxTokens: parseInt(maxTokensInput.value)
-  };
-
-  // 保存设置
-  saveSettings();
+  // 获取当前模型
+  const currentModel = getCurrentModel();
+  if (!currentModel) {
+    alert('请先选择一个模型！');
+    return;
+  }
 
   // 向主进程发送消息
-  ipcRenderer.send('send-message', { message, settings });
+  ipcRenderer.send('send-message', { message, model: currentModel });
 }
 
 // 格式化消息内容，支持代码块和链接
@@ -431,6 +654,35 @@ settingsButton.addEventListener('click', () => {
   settingsModal.style.display = settingsModal.style.display === 'block' ? 'none' : 'block';
 });
 
+// 监听添加模型按钮的点击事件
+addModelButton.addEventListener('click', addNewModel);
+
+// 监听保存模型按钮的点击事件
+saveModelButton.addEventListener('click', saveModel);
+
+// 模型选择器改变事件监听
+modelSelector.addEventListener('change', (e) => {
+  selectModel(e.target.value);
+});
+
+// 监听测试模型按钮的点击事件
+testModelButton.addEventListener('click', testModel);
+
+// 监听删除模型按钮的点击事件
+deleteModelButton.addEventListener('click', deleteModel);
+
+// 监听模型测试结果
+ipcRenderer.on('test-model-result', (event, result) => {
+  testModelButton.textContent = '测试模型';
+  testModelButton.disabled = false;
+  
+  if (result.success) {
+    alert('模型测试成功！');
+  } else {
+    alert(`模型测试失败: ${result.error}`);
+  }
+});
+
 // 监听点击设置模态框外部关闭模态框
 document.addEventListener('click', (e) => {
   if (e.target === settingsButton) return;
@@ -461,6 +713,3 @@ importSessionsButton.addEventListener('click', importSessions);
 // 监听文件导入事件
 importFileInput.addEventListener('change', handleFileImport);
 
-// 加载设置和会话
-loadSettings();
-loadSessions();

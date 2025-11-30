@@ -1,0 +1,26 @@
+[
+  {
+    "id": "demo-openai",
+    "provider": "openai",
+    "name": "gpt-3.5-turbo",
+    "apiKey": "sk-demo-key-for-testing",
+    "apiUrl": "https://api.openai.com/v1/chat/completions",
+    "maxTokens": 2048,
+    "temperature": 0.7,
+    "enabled": true,
+    "status": "unknown",
+    "lastTest": null
+  },
+  {
+    "id": "demo-anthropic",
+    "provider": "anthropic",
+    "name": "claude-3-haiku-20240307",
+    "apiKey": "sk-ant-demo-key-for-testing",
+    "apiUrl": "https://api.anthropic.com/v1/messages",
+    "maxTokens": 4096,
+    "temperature": 0.8,
+    "enabled": true,
+    "status": "unknown",
+    "lastTest": null
+  }
+]
