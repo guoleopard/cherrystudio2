@@ -1,4 +1,4 @@
-const { ipcRenderer, app } = require('electron');
+const { ipcRenderer } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
@@ -31,10 +31,22 @@ const modelMaxTokensInput = document.getElementById('model-max-tokens');
 const saveModelButton = document.getElementById('save-model-button');
 const testModelButton = document.getElementById('test-model-button');
 const deleteModelButton = document.getElementById('delete-model-button');
+const modelSelector = document.getElementById('model-selector');
 
 // 设置文件路径
-const settingsPath = path.join(app.getPath('userData'), 'settings.json');
-const sessionsPath = path.join(app.getPath('userData'), 'sessions.json');
+let settingsPath, sessionsPath;
+
+// 请求用户数据路径
+ipcRenderer.send('get-user-data-path');
+
+// 接收用户数据路径
+ipcRenderer.on('user-data-path-reply', (event, userDataPath) => {
+  settingsPath = path.join(userDataPath, 'settings.json');
+  sessionsPath = path.join(userDataPath, 'sessions.json');
+  // 加载设置和会话
+  loadSettings();
+  loadSessionsData();
+});
 
 // 当前会话
 let currentSessionId = null;
@@ -126,6 +138,20 @@ function updateModelListUI() {
     modelItem.appendChild(modelInfo);
     modelItem.addEventListener('click', () => selectModel(model.id));
     modelList.appendChild(modelItem);
+  });
+}
+
+// 更新模型选择器UI
+function updateModelSelectorUI() {
+  modelSelector.innerHTML = '';
+  allModels.forEach(model => {
+    const option = document.createElement('option');
+    option.value = model.id;
+    option.textContent = `${model.provider} - ${model.name}`;
+    if (model.id === currentModelId) {
+      option.selected = true;
+    }
+    modelSelector.appendChild(option);
   });
 }
 
@@ -269,6 +295,7 @@ function selectModel(modelId) {
   currentModelId = modelId;
   saveSettings();
   updateModelListUI();
+  updateModelSelectorUI();
   loadCurrentModelSettings();
 }
 
@@ -633,6 +660,11 @@ addModelButton.addEventListener('click', addNewModel);
 // 监听保存模型按钮的点击事件
 saveModelButton.addEventListener('click', saveModel);
 
+// 模型选择器改变事件监听
+modelSelector.addEventListener('change', (e) => {
+  selectModel(e.target.value);
+});
+
 // 监听测试模型按钮的点击事件
 testModelButton.addEventListener('click', testModel);
 
@@ -681,6 +713,3 @@ importSessionsButton.addEventListener('click', importSessions);
 // 监听文件导入事件
 importFileInput.addEventListener('change', handleFileImport);
 
-// 加载设置和会话
-loadSettings();
-loadSessions();

@@ -211,6 +211,11 @@ app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
 });
 
+// 处理来自渲染进程的用户数据路径请求
+ipcMain.on('get-user-data-path', (event) => {
+  event.reply('user-data-path-reply', app.getPath('userData'));
+});
+
 // 处理来自渲染进程的消息
 ipcMain.on('send-message', async (event, { message, model }) => {
   try {

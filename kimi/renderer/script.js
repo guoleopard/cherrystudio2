@@ -378,21 +378,21 @@ function addMessage(type, content) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${type}`;
     
-    const bubbleDiv = document.createElement('div');
-    bubbleDiv.className = 'message-bubble';
+    // 创建消息头部
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'message-header';
+    headerDiv.innerHTML = `
+        <span class="message-role">${type === 'user' ? '👤 我' : '🤖 AI'}</span>
+        <span class="message-time">${new Date().toLocaleTimeString()}</span>
+    `;
     
+    // 创建消息内容
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
     contentDiv.textContent = content;
     
-    bubbleDiv.appendChild(contentDiv);
-    messageDiv.appendChild(bubbleDiv);
-    
-    // 添加时间戳
-    const timeDiv = document.createElement('div');
-    timeDiv.className = 'message-time';
-    timeDiv.textContent = new Date().toLocaleTimeString();
-    messageDiv.appendChild(timeDiv);
+    messageDiv.appendChild(headerDiv);
+    messageDiv.appendChild(contentDiv);
     
     // 移除欢迎消息
     const welcomeMessage = elements.messagesContainer.querySelector('.welcome-message');
@@ -862,6 +862,13 @@ function updateModelsUI() {
 // 显示错误
 function showError(title, content) {
     ipcRenderer.invoke('show-error', title, content);
+    alert(`${title}: ${content}`);
+}
+
+// 显示成功消息
+function showMessage(title, content) {
+    console.log(`${title}: ${content}`);
+    alert(`${title}: ${content}`);
 }
 
 // 显示成功消息

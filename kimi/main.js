@@ -159,55 +159,164 @@ ipcMain.handle('save-models', async (event, models) => {
 
 ipcMain.handle('test-model', async (event, model) => {
   try {
+    const startTime = Date.now();
     const axios = require('axios');
     
-    let testUrl = model.apiUrl;
-    let testHeaders = {
-      'Content-Type': 'application/json'
-    };
-    
-    // 根据不同厂商设置不同的认证方式
-    switch (model.provider) {
-      case 'openai':
-        testHeaders['Authorization'] = `Bearer ${model.apiKey}`;
-        testUrl = model.apiUrl || 'https://api.openai.com/v1/models';
-        break;
-      case 'anthropic':
-        testHeaders['x-api-key'] = model.apiKey;
-        testUrl = model.apiUrl || 'https://api.anthropic.com/v1/models';
-        break;
-      case 'google':
-        testUrl = model.apiUrl || `https://generativelanguage.googleapis.com/v1beta/models?key=${model.apiKey}`;
-        break;
-      case 'azure':
-        testHeaders['api-key'] = model.apiKey;
-        break;
-      case 'huggingface':
-        testHeaders['Authorization'] = `Bearer ${model.apiKey}`;
-        testUrl = model.apiUrl || `https://huggingface.co/api/models/${model.name}`;
-        break;
-      default:
-        if (model.apiKey) {
-          testHeaders['Authorization'] = `Bearer ${model.apiKey}`;
-        }
+    // 检查API密钥
+    if (!model.apiKey || model.apiKey.trim() === '') {
+      return {
+        success: false,
+        message: 'API Key 不能为空'
+      };
     }
     
-    const response = await axios.get(testUrl, {
-      headers: testHeaders,
-      timeout: 10000
-    });
+    // 根据不同厂商进行测试
+    switch (model.provider) {
+      case 'openai':
+        // 测试 OpenAI API - 使用轻量级请求
+        try {
+          await axios.get('https://api.openai.com/v1/models', {
+            headers: {
+              'Authorization': `Bearer ${model.apiKey}`
+            },
+            timeout: 10000
+          });
+        } catch (apiError) {
+          // 如果模型列表API失败，尝试简单的聊天完成
+          if (apiError.response?.status === 401) {
+            throw new Error('API Key 无效');
+          }
+          // 尝试简单的聊天请求
+          await axios.post('https://api.openai.com/v1/chat/completions', {
+            model: model.name || 'gpt-3.5-turbo',
+            messages: [{ role: 'user', content: 'Hi' }],
+            max_tokens: 1
+          }, {
+            headers: {
+              'Authorization': `Bearer ${model.apiKey}`,
+              'Content-Type': 'application/json'
+            },
+            timeout: 10000
+          });
+        }
+        break;
+        
+      case 'anthropic':
+        // 测试 Anthropic API
+        await axios.post('https://api.anthropic.com/v1/messages', {
+          model: model.name || 'claude-3-haiku-20240307',
+          max_tokens: 1,
+          messages: [{ role: 'user', content: 'Hi' }]
+        }, {
+          headers: {
+            'x-api-key': model.apiKey,
+            'Content-Type': 'application/json',
+            'anthropic-version': '2023-06-01'
+          },
+          timeout: 10000
+        });
+        break;
+        
+      case 'google':
+        // 测试 Google API
+        const googleModel = model.name || 'gemini-pro';
+        await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/${googleModel}:generateContent`, {
+          contents: [{ parts: [{ text: 'Hi' }] }]
+        }, {
+          params: { key: model.apiKey },
+          timeout: 10000
+        });
+        break;
+        
+      case 'azure':
+        // 测试 Azure OpenAI API
+        if (!model.apiUrl || model.apiUrl.trim() === '') {
+          return {
+            success: false,
+            message: 'Azure OpenAI 需要指定 API 地址'
+          };
+        }
+        await axios.post(model.apiUrl, {
+          messages: [{ role: 'user', content: 'Hi' }],
+          max_tokens: 1
+        }, {
+          headers: {
+            'api-key': model.apiKey,
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        });
+        break;
+        
+      case 'huggingface':
+        // 测试 Hugging Face API
+        const hfModel = model.name || 'microsoft/DialoGPT-medium';
+        await axios.post(`https://api-inference.huggingface.co/models/${hfModel}`, {
+          inputs: 'Hi',
+          parameters: { max_new_tokens: 1 }
+        }, {
+          headers: {
+            'Authorization': `Bearer ${model.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        });
+        break;
+        
+      case 'custom':
+        // 测试自定义 API
+        if (!model.apiUrl || model.apiUrl.trim() === '') {
+          return {
+            success: false,
+            message: '自定义模型需要指定 API 地址'
+          };
+        }
+        await axios.post(model.apiUrl, {
+          model: model.name,
+          prompt: 'Hi',
+          max_tokens: 1
+        }, {
+          headers: {
+            'Authorization': `Bearer ${model.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        });
+        break;
+        
+      default:
+        return {
+          success: false,
+          message: `不支持的厂商: ${model.provider}`
+        };
+    }
     
+    const responseTime = Date.now() - startTime;
     return {
       success: true,
-      status: response.status,
-      message: '模型连接成功'
+      message: `连接成功 (${responseTime}ms)`
     };
   } catch (error) {
-    console.error('模型测试失败:', error);
+    console.error(`测试 ${model.provider} 模型失败:`, error);
+    
+    let errorMessage = '连接失败';
+    if (error.response?.data?.error?.message) {
+      errorMessage = error.response.data.error.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    } else if (error.response?.status === 401) {
+      errorMessage = 'API Key 无效';
+    } else if (error.response?.status === 404) {
+      errorMessage = '模型不存在';
+    } else if (error.code === 'ENOTFOUND') {
+      errorMessage = '无法连接到API服务器';
+    } else if (error.code === 'ETIMEDOUT') {
+      errorMessage = '连接超时';
+    }
+    
     return {
       success: false,
-      error: error.message,
-      message: '模型连接失败: ' + error.message
+      message: errorMessage
     };
   }
 });

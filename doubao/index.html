@@ -81,15 +81,53 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      padding: 1rem;
+      padding: 0;
       overflow: hidden;
+    }
+
+    #chat-header {
+      background-color: #f5f5f5;
+      padding: 0.5rem 1rem;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      transition: background-color 0.3s, border-color 0.3s;
+    }
+    
+    body.dark-theme #chat-header {
+      background-color: #2a2a2a;
+      border-bottom: 1px solid #444;
+    }
+
+    #model-switcher {
+      flex: 1;
+    }
+
+    #model-selector {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: white;
+      font-size: 1rem;
+      transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+    }
+    
+    body.dark-theme #model-selector {
+      background-color: #3a3a3a;
+      border-color: #444;
+      color: white;
+    }
+
+    #model-selector option {
+      padding: 0.5rem;
     }
 
     #messages {
       flex: 1;
       overflow-y: auto;
       margin-bottom: 1rem;
-      padding-right: 1rem;
+      padding: 1rem 2rem;
     }
 
     .message {
@@ -161,6 +199,7 @@
       display: flex;
       gap: 0.5rem;
       position: relative;
+      margin: 1rem 2rem;
     }
 
     #message-input {
@@ -208,8 +247,11 @@
 
     .model-list {
       margin-bottom: 1rem;
-      max-height: 150px;
+      max-height: 300px;
       overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 0.5rem;
     }
 
     .model-item {
@@ -361,16 +403,21 @@
 
     #settings-modal {
       position: fixed;
-      bottom: 20px;
-      left: 20px;
-      width: 300px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 800px;
+      max-width: 90%;
+      height: 70vh;
+      max-height: 90%;
       background-color: white;
       border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       padding: 1rem;
       display: none;
       z-index: 1000;
       transition: background-color 0.3s, box-shadow 0.3s;
+      overflow-y: auto;
     }
     
     body.dark-theme #settings-modal {
@@ -552,6 +599,13 @@
       </div>
     </aside>
     <section id="chat-area">
+      <div id="chat-header">
+        <div id="model-switcher">
+          <select id="model-selector" placeholder="选择模型">
+            <!-- 模型列表将通过JavaScript动态生成 -->
+          </select>
+        </div>
+      </div>
       <div id="messages"></div>
       <div id="input-area">
         <input type="text" id="message-input" placeholder="输入你的消息...">

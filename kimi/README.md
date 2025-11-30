@@ -1,226 +1,174 @@
-# AI Chat Client
+# Cherry Studio 模型管理系统
 
-一个仿照 Cherry Studio 的 Electron 桌面大模型会话客户端，支持多种大语言模型的本地运行和配置。
+## 项目概述
 
-## 功能特性
+这是一个基于 Electron 框架的仿 Cherry Studio 桌面应用，现已实现完整的模型管理功能。应用支持多厂商 AI 模型集成，提供直观的模型管理和切换界面。
 
-### 🎯 核心功能
-- **多模型支持**: 支持 GPT-3.5 Turbo、GPT-4、GPT-4 Turbo 等多种模型
-- **流式响应**: 实时显示 AI 回复，提供更好的用户体验
-- **会话管理**: 支持创建新对话、清空对话历史
-- **参数配置**: 可自定义模型参数（温度、最大令牌数等）
+## 主要功能
 
-### ⚙️ 配置功能
-- **API 设置**: 支持自定义 API Key 和 API URL
-- **模型参数**: 可调整温度、最大令牌数等参数
-- **默认模型**: 支持设置默认使用的模型
-- **设置持久化**: 配置自动保存到本地
+### ✅ 已完成的功能
 
-### 🎨 界面特性
-- **现代化 UI**: 采用现代化的设计风格，类似 Cherry Studio
-- **响应式布局**: 适配不同屏幕尺寸
-- **深色主题**: 专业的配色方案
-- **流畅动画**: 平滑的过渡效果
+1. **模型管理系统**
+   - 添加、编辑、删除模型
+   - 支持多种模型厂商（OpenAI、Anthropic、Google、Azure、HuggingFace、自定义）
+   - 模型连接状态检测
+   - 模型参数配置（温度、最大令牌数等）
 
-### 🔧 技术特性
-- **Electron 框架**: 跨平台桌面应用
-- **流式 API**: 支持 OpenAI 流式响应
-- **本地存储**: 设置和配置本地持久化
-- **错误处理**: 完善的错误提示和处理机制
+2. **会话界面**
+   - 模型切换下拉选择器
+   - 实时模型状态显示
+   - 智能错误处理
 
-## 项目结构
+3. **多厂商 API 支持**
+   - OpenAI GPT 系列
+   - Anthropic Claude 系列
+   - Google Gemini 系列
+   - Azure OpenAI
+   - Hugging Face
+   - 自定义 API 接口
+
+4. **用户体验**
+   - 现代化的界面设计
+   - 响应式布局
+   - 加载状态指示
+   - 错误提示和处理
+
+### 🎯 技术特点
+
+- **Electron 架构**：主进程 + 渲染进程分离
+- **IPC 通信**：安全的进程间通信
+- **本地数据存储**：JSON 文件存储配置和模型数据
+- **模块化设计**：清晰的代码结构和功能分离
+- **错误处理**：完善的异常捕获和用户提示
+
+## 文件结构
 
 ```
-ai-chat-client/
-├── main.js              # 主进程文件
-├── package.json         # 项目配置
-├── renderer/           # 渲染进程文件
-│   ├── index.html      # 主界面
-│   ├── styles.css      # 样式文件
-│   └── script.js       # 交互逻辑
-├── assets/             # 资源文件
-│   └── icon.png        # 应用图标
-└── README.md          # 项目文档
+kimi/
+├── main.js                 # 主进程代码
+├── package.json           # 项目配置
+├── renderer/
+│   ├── index.html        # 主界面
+│   ├── script.js         # 渲染进程逻辑
+│   └── styles.css        # 样式文件
+├── test_models.md        # 测试指南
+└── demo_models.json      # 演示数据
 ```
 
-## 快速开始
+## 使用指南
 
-### 环境要求
-- Node.js (版本 16 或更高)
-- npm 或 yarn
+### 1. 安装和运行
 
-### 安装依赖
 ```bash
 npm install
+npm start
 ```
 
-### 开发模式运行
-```bash
-npm run dev
-```
+### 2. 添加模型
 
-### 构建应用
-```bash
-# 构建所有平台
-npm run build
+1. 点击侧边栏底部的"模型管理"按钮
+2. 点击"添加模型"按钮
+3. 选择厂商并填写模型信息
+4. 保存模型配置
 
-# 仅构建当前平台
-npm run dist
-```
+### 3. 测试模型
 
-## 使用说明
+1. 在模型列表中点击"测试"按钮
+2. 查看连接状态（在线/离线）
+3. 如果离线，检查 API 密钥和网络连接
 
-### 1. 首次使用配置
-1. 启动应用后，点击右下角的"设置"按钮
-2. 在 API 设置中输入您的 OpenAI API Key
-3. 可以选择修改 API URL（默认为 OpenAI 官方 API）
-4. 根据需要调整模型参数
-5. 点击"保存设置"
+### 4. 使用模型聊天
 
-### 2. 开始对话
 1. 在主界面选择要使用的模型
-2. 在输入框中输入您的问题
-3. 按 Enter 或点击发送按钮
-4. 等待 AI 回复（支持流式显示）
+2. 输入消息并发送
+3. 系统会自动使用选中的模型进行回复
 
-### 3. 会话管理
-- **新对话**: 点击左上角的"新对话"按钮
-- **清空对话**: 点击右上角的"清空"按钮
-- **快速操作**: 使用欢迎界面的快捷按钮快速开始
+## 配置说明
 
-### 4. 模型参数说明
-- **温度 (Temperature)**: 控制回复的随机性，0-2 之间，值越大越随机
-- **最大令牌数 (Max Tokens)**: 限制回复的最大长度
-- **模型选择**: 根据需求选择不同的 GPT 模型
+### 模型配置参数
 
-## API 配置
+- **厂商**：选择 AI 模型提供商
+- **模型名称**：具体的模型版本
+- **API Key**：访问模型的密钥
+- **API 地址**：自定义 API 端点（可选）
+- **最大令牌数**：回复的最大长度
+- **温度**：生成回复的随机性（0-1）
+- **启用状态**：是否可用该模型
 
-### OpenAI API
-默认使用 OpenAI 官方 API：
-```
-API URL: https://api.openai.com/v1/chat/completions
-```
+### 支持的模型
 
-### 自定义 API
-支持使用兼容 OpenAI API 格式的第三方服务：
-- Azure OpenAI
-- 其他 OpenAI 兼容服务
+#### OpenAI
+- gpt-3.5-turbo
+- gpt-4
+- gpt-4-turbo
+- 其他 GPT 系列模型
 
-### 获取 API Key
-1. 访问 [OpenAI 官网](https://platform.openai.com/)
-2. 注册账号并创建 API Key
-3. 确保账户有足够的额度
+#### Anthropic
+- claude-3-haiku-20240307
+- claude-3-sonnet-20240229
+- claude-3-opus-20240229
 
-## 开发指南
+#### Google
+- gemini-pro
+- gemini-pro-vision
 
-### 添加新模型
-1. 在 `renderer/index.html` 的模型选择器中添加新选项
-2. 在 `main.js` 的默认设置中添加新模型配置
-3. 更新模型参数验证逻辑
+#### Azure OpenAI
+- 支持所有 Azure OpenAI 模型
 
-### 自定义主题
-修改 `renderer/styles.css` 中的颜色变量：
-```css
-:root {
-    --primary-color: #3498db;
-    --secondary-color: #2c3e50;
-    --background-color: #f5f5f5;
-    /* ... 其他颜色变量 */
-}
-```
+#### Hugging Face
+- 支持 Hugging Face 推理 API
 
-### 添加新功能
-1. 在 `main.js` 中添加 IPC 处理函数
-2. 在 `renderer/script.js` 中添加对应的 UI 逻辑
-3. 更新界面样式
+#### 自定义
+- 支持任何兼容 OpenAI API 格式的模型
 
-## 构建和发布
+## 开发说明
 
-### 构建命令
-```bash
-# Windows
-npm run build
+### IPC 通信接口
 
-# macOS
-npm run build
+#### 主进程处理
+- `get-models`：获取模型列表
+- `save-models`：保存模型配置
+- `test-model`：测试模型连接
+- `ai-request`：发送 AI 请求
 
-# Linux
-npm run build
-```
+#### 错误处理
+- 网络错误
+- API 认证错误
+- 模型不存在错误
+- 参数验证错误
 
-### 发布配置
-修改 `package.json` 中的 `build` 配置：
-```json
-{
-  "build": {
-    "appId": "com.yourcompany.ai-chat-client",
-    "productName": "AI Chat Client",
-    "directories": {
-      "output": "dist"
-    }
-  }
-}
-```
+### 扩展开发
 
-## 常见问题
+#### 添加新厂商
+1. 在 `main.js` 中添加新的 API 调用函数
+2. 在模型测试逻辑中添加对应的测试方法
+3. 更新厂商名称映射
 
-### Q: API Key 无效怎么办？
-A: 请检查以下几点：
-1. API Key 是否正确复制，没有多余的空格
-2. API Key 是否还有可用额度
-3. API URL 是否正确配置
+#### 自定义界面
+- 修改 `renderer/styles.css` 调整样式
+- 修改 `renderer/index.html` 调整界面结构
+- 修改 `renderer/script.js` 调整交互逻辑
 
-### Q: 无法连接到 API 怎么办？
-A: 可能的解决方案：
-1. 检查网络连接
-2. 确认 API URL 是否正确
-3. 检查防火墙设置
-4. 尝试使用代理
+## 注意事项
 
-### Q: 回复速度很慢怎么办？
-A: 可以尝试：
-1. 选择更快的模型（如 GPT-3.5 Turbo）
-2. 降低 max_tokens 参数
-3. 检查网络连接质量
+1. **API 密钥安全**：密钥存储在本地，请妥善保管
+2. **网络要求**：需要能够访问对应的 API 服务
+3. **模型限制**：不同模型有不同的使用限制和定价
+4. **错误处理**：完善的错误提示帮助快速定位问题
 
-### Q: 如何更新到最新版本？
-A: 下载最新版本的安装包，重新安装即可，设置会自动保留。
+## 后续计划
+
+- [ ] 聊天记录保存和导出
+- [ ] 多语言支持
+- [ ] 主题切换（深色/浅色）
+- [ ] 高级参数配置
+- [ ] 批量模型测试
+- [ ] 模型性能对比
 
 ## 贡献指南
 
-欢迎提交 Issue 和 Pull Request！
-
-### 提交 Issue
-- 描述清楚遇到的问题
-- 提供复现步骤
-- 注明操作系统和版本
-
-### 提交代码
-1. Fork 项目
-2. 创建特性分支
-3. 提交更改
-4. 推送到分支
-5. 创建 Pull Request
+欢迎提交 Issue 和 Pull Request 来改进这个项目。
 
 ## 许可证
 
-MIT License - 详见 [LICENSE](LICENSE) 文件
-
-## 更新日志
-
-### v1.0.0 (2024-01-01)
-- ✨ 初始版本发布
-- 🎯 支持 GPT-3.5 Turbo、GPT-4 等模型
-- ⚙️ 完整的设置和配置系统
-- 🎨 现代化 UI 界面
-- 🔧 流式响应支持
-
-## 联系方式
-
-如有问题或建议，欢迎通过以下方式联系：
-- 提交 GitHub Issue
-- 发送邮件至: your-email@example.com
-
----
-
-**享受使用 AI Chat Client！** 🚀
+MIT License
